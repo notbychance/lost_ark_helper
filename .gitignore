@@ -1,0 +1,12 @@
+# backends ignorelist
+backend/.venv
+backend/**/__pycache__
+backend/**/__init__.py
+backend/**/migrations
+
+# frontend ignorelist
+
+
+# global ignorelist
+*.env
+*.sqlite3
