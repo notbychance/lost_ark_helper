@@ -5,8 +5,9 @@ backend/**/__init__.py
 backend/**/migrations
 
 # frontend ignorelist
-frontend/.vscode
-frontend/node_modules
+frontend/.vscode/
+frontend/node_modules/
+frontend/packege-lock.json
 
 # global ignorelist
 *.env
