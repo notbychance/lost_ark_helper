@@ -9,39 +9,12 @@ import datetime
 # Create your models here.
 
 
-class Group(models.Model):
-    name = models.CharField(max_length=120, unique=True, editable=False)
-    invitation = models.TextField(unique=True, editable=False)
-
-    def save(self, *args, **kwargs):
-        if not self.pk:
-            super().save(*args, **kwargs)
-
-        self.name = f'group - {self.pk}'
-        self.invitation = generate_invite_code(self.name)
-
-        super().save(*args, **kwargs)
-
-    def __str__(self) -> str:
-        return self.name
-
-
 class CustomUser(AbstractUser):
     phone = models.CharField(max_length=20, blank=True)
     avatar = models.ImageField(upload_to='avatars/', blank=True)
-    is_leader = models.BooleanField(default=False)
-    is_gamer = models.BooleanField(default=True)
     credentials = models.CharField(max_length=120, blank=True)
-    group = models.ForeignKey(
-        Group, on_delete=models.CASCADE, blank=True, default=None)
 
-    def save(self, *args, **kwargs):
-        if self.is_superuser or self.is_staff:
-            self.is_leader = True
-
-        if self.is_leader:
-            self.is_gamer = False
-        super().save(*args, **kwargs)
+    objects: Manager = models.Manager()
 
     def __str__(self) -> str:
         return self.username
@@ -58,7 +31,7 @@ class SocialMediaType(models.Model):
 
 
 class SocialMedia(models.Model):
-    media_type = models.ForeignKey(SocialMediaType, on_delete=models.CASCADE)
+    type = models.ForeignKey(SocialMediaType, on_delete=models.CASCADE)
     reference = models.CharField(max_length=120, unique=True)
     date_to = models.DateTimeField(editable=False)
     user = models.ForeignKey(CustomUser, on_delete=models.CASCADE)
@@ -73,10 +46,28 @@ class SocialMedia(models.Model):
         return self.reference
 
 
-class UserCharacter(models.Model):
-    name = models.CharField(max_length=40, unique=True)
-    user = models.ForeignKey(CustomUser, on_delete=models.CASCADE)
-    group = models.ForeignKey(Group, on_delete=models.CASCADE)
+class Group(models.Model):
+    name = models.CharField(max_length=120, unique=True, editable=False)
+    invitation = models.TextField(unique=True, editable=False)
+    owner = models.ForeignKey(CustomUser, on_delete=models.CASCADE)
+
+    objects: Manager = models.Manager()
+
+    # def save(self, *args, **kwargs):
+    #     if not self.pk:
+    #         super().save(*args, **kwargs)
+
+    #     self.name = f'group - {self.pk}'
+    #     self.invitation = generate_invite_code(self.name)
+
+    #     super().save(*args, **kwargs)
+
+    def __str__(self) -> str:
+        return self.name
+
+
+class Legacy(models.Model):
+    name = models.CharField(max_length=60, unique=True)
 
     objects: Manager = models.Manager()
 
@@ -84,7 +75,7 @@ class UserCharacter(models.Model):
         return self.name
 
 
-class CharactersClass(models.Model):
+class CharacterClass(models.Model):
     name = models.CharField(max_length=80, unique=True)
     image = models.ImageField(upload_to='classes/')
 
@@ -94,15 +85,74 @@ class CharactersClass(models.Model):
         return self.name
 
 
-class Characters(models.Model):
-    name = models.CharField(max_length=40, unique=True)
-    clas = models.ForeignKey(CharactersClass, on_delete=models.CASCADE)
+class Character(models.Model):
+    name = models.CharField(max_length=60, unique=True)
+    clas = models.ForeignKey(CharacterClass, on_delete=models.CASCADE)
     gear_score = models.DecimalField(max_digits=10, decimal_places=2)
+    legacy = models.ForeignKey(Legacy, on_delete=models.CASCADE)
 
     objects: Manager = models.Manager()
 
     def __str__(self) -> str:
         return self.name
+
+
+class Privilege():
+    OWNER = 'owner'
+    EDITOR = 'editor'
+    PARTICIPANT = 'participant'
+
+    CHOICES = [
+        (OWNER, 'владелец'),
+        (EDITOR, 'редактор'),
+        (PARTICIPANT, 'участник')
+    ]
+
+
+class GroupCharacters(models.Model):
+    character = models.ForeignKey(Legacy, on_delete=models.CASCADE)
+    group = models.ForeignKey(Group, on_delete=models.CASCADE)
+
+    objects: Manager = models.Manager()
+
+
+class GroupParticipants(models.Model):
+    group = models.ForeignKey(Group, on_delete=models.CASCADE)
+    user = models.ForeignKey(CustomUser, on_delete=models.CASCADE)
+    privilege = models.CharField(
+        max_length=40,
+        choices=Privilege.CHOICES,
+        default=Privilege.PARTICIPANT
+    )
+    character = models.ForeignKey(Legacy, on_delete=models.CASCADE)
+
+    objects: Manager = models.Manager()
+
+
+class NotificationStatus:
+    ACCEPTED = 'accepted'
+    DECLINED = 'declined'
+    WAITING = 'waiting'
+
+    CHOICES = [
+        (ACCEPTED, 'Принято'),
+        (DECLINED, 'Отклонено'),
+        (WAITING, 'Ожидание'),
+    ]
+
+
+class Notification(models.Model):
+    user = models.ForeignKey(CustomUser, on_delete=models.CASCADE)
+    character = models.ForeignKey(Legacy, on_delete=models.CASCADE)
+    status = models.CharField(
+        max_length=20,
+        choices=NotificationStatus.CHOICES,
+        default=NotificationStatus.WAITING
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    objects: Manager = models.Manager()
 
 
 class RaidType(models.Model):
@@ -129,11 +179,21 @@ class Raid(models.Model):
     difficulty = models.ForeignKey(
         RaidDifficulty, on_delete=models.CASCADE, blank=True, default=None)
     release_date = models.DateField(auto_now_add=True, editable=False)
+    gs = models.IntegerField()
+    capacity = models.IntegerField()
 
     objects: Manager = models.Manager()
 
     def __str__(self) -> str:
         return self.name
+
+
+class RaidGroup(models.Model):
+    raid = models.ForeignKey(Raid, on_delete=models.CASCADE)
+    character = models.ForeignKey(Characters, on_delete=models.CASCADE)
+    position = models.IntegerField()
+
+    objects: Manager = models.Manager()
 
 
 class Item(models.Model):
