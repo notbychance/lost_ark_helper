@@ -7,7 +7,7 @@ backend/**/migrations
 # frontend ignorelist
 frontend/.vscode/
 frontend/node_modules/
-frontend/packege-lock.json
+frontend/package-lock.json
 
 # global ignorelist
 *.env
