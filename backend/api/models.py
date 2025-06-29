@@ -9,10 +9,45 @@ import datetime
 # Create your models here.
 
 
+# Characters models
+class Legacy(models.Model):
+    name = models.CharField(max_length=60, unique=True)
+
+    objects: Manager = models.Manager()
+
+    def __str__(self) -> str:
+        return self.name
+
+
+class CharacterClass(models.Model):
+    name = models.CharField(max_length=80, unique=True)
+    image = models.ImageField(upload_to='classes/')
+
+    objects: Manager = models.Manager()
+
+    def __str__(self) -> str:
+        return self.name
+
+
+class Character(models.Model):
+    name = models.CharField(max_length=60, unique=True)
+    clas = models.ForeignKey(CharacterClass, on_delete=models.CASCADE)
+    gear_score = models.DecimalField(max_digits=10, decimal_places=2)
+    legacy = models.ForeignKey(Legacy, on_delete=models.CASCADE)
+
+    objects: Manager = models.Manager()
+
+    def __str__(self) -> str:
+        return self.name
+
+
+# User models
 class CustomUser(AbstractUser):
     phone = models.CharField(max_length=20, blank=True)
     avatar = models.ImageField(upload_to='avatars/', blank=True)
     credentials = models.CharField(max_length=120, blank=True)
+    character = models.ForeignKey(
+        Legacy, on_delete=models.CASCADE, default=None)
 
     objects: Manager = models.Manager()
 
@@ -46,41 +81,11 @@ class SocialMedia(models.Model):
         return self.reference
 
 
+# Groups models
 class Group(models.Model):
     name = models.CharField(max_length=120, unique=True, editable=False)
     invitation = models.TextField(unique=True, editable=False)
     owner = models.ForeignKey(CustomUser, on_delete=models.CASCADE)
-
-    objects: Manager = models.Manager()
-
-    def __str__(self) -> str:
-        return self.name
-
-
-class Legacy(models.Model):
-    name = models.CharField(max_length=60, unique=True)
-
-    objects: Manager = models.Manager()
-
-    def __str__(self) -> str:
-        return self.name
-
-
-class CharacterClass(models.Model):
-    name = models.CharField(max_length=80, unique=True)
-    image = models.ImageField(upload_to='classes/')
-
-    objects: Manager = models.Manager()
-
-    def __str__(self) -> str:
-        return self.name
-
-
-class Character(models.Model):
-    name = models.CharField(max_length=60, unique=True)
-    clas = models.ForeignKey(CharacterClass, on_delete=models.CASCADE)
-    gear_score = models.DecimalField(max_digits=10, decimal_places=2)
-    legacy = models.ForeignKey(Legacy, on_delete=models.CASCADE)
 
     objects: Manager = models.Manager()
 
@@ -115,7 +120,6 @@ class GroupParticipants(models.Model):
         choices=Privilege.CHOICES,
         default=Privilege.PARTICIPANT
     )
-    character = models.ForeignKey(Legacy, on_delete=models.CASCADE)
 
     objects: Manager = models.Manager()
 

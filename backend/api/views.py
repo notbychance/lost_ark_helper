@@ -7,6 +7,7 @@ from rest_framework.response import Response
 from rest_framework.pagination import PageNumberPagination
 from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
+from django.db import transaction
 
 from .serializers import *
 from .models import *
@@ -123,10 +124,6 @@ class AuthViewSet(viewsets.GenericViewSet):
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )
 
-    def link(self, request):
-        user = request.user
-        user.
-
     def list(self, request, *args, **kwargs):
         if not request.user.is_staff and not request.user.is_superuser:
             return Response(status=status.HTTP_404_NOT_FOUND)
@@ -150,20 +147,24 @@ class GroupViewSet(viewsets.GenericViewSet):
 
     def get_permissions(self):
         match self.action:
-            case 'character-list':
+            case 'group-character':
                 return [IsAuthenticated(), IsParticipant()]
-            case 'invite':
+            case 'invite' | 'group-user':
                 return [IsAuthenticated(), IsOwner()]
             case _:
                 return super().get_permissions()
 
-    @action(detail=True, methods=['get'], url_path='character-list')
-    def group_list(self, request, pk=None):
+    @action(detail=True, methods=['get'], url_path='group-character')
+    def group_character(self, request, pk=None):
         """Получение списка учасников группы"""
         group = self.get_object()
         characters = GroupCharacters.objects.filter(group=group)
         serializer = GroupCharacterSerializer(characters, many=True)
         return Response(serializer.data, status=status.HTTP_200_OK)
+
+    @action(detail=True, methods=['get'], url_path='group-user')
+    def group_user(self, request, pk=None):
+        '''Получения списка пользователей группы'''
 
     @action(detail=True, methods=['get'], url_path='invite')
     def invite(self, request, pk=None):
@@ -187,10 +188,22 @@ class GroupViewSet(viewsets.GenericViewSet):
 
     def create(self, request):
         '''Создание группы и привязка к текущему пользователю'''
-        self.get_serializer().save()
+        try:
+            with transaction.atomic():
+                group = self.get_serializer().save()
+                GroupParticipants.objects.create(
+                    group=group,
+                    user=request.user,
+                    privilege=Privilege.OWNER
+                )
+        except Exception as e:
+            return Response(
+                {"detail": str(e)},
+                status=status.HTTP_400_BAD_REQUEST
+            )
 
     def destroy(self, request, *args, **kwargs):
-        instance = self.get_object()  # Получаем объект
+        instance = self.get_object()
 
         if instance.owner != request.user:
             return Response(status=status.HTTP_403_FORBIDDEN)
