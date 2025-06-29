@@ -53,15 +53,6 @@ class Group(models.Model):
 
     objects: Manager = models.Manager()
 
-    # def save(self, *args, **kwargs):
-    #     if not self.pk:
-    #         super().save(*args, **kwargs)
-
-    #     self.name = f'group - {self.pk}'
-    #     self.invitation = generate_invite_code(self.name)
-
-    #     super().save(*args, **kwargs)
-
     def __str__(self) -> str:
         return self.name
 
@@ -129,30 +120,30 @@ class GroupParticipants(models.Model):
     objects: Manager = models.Manager()
 
 
-class NotificationStatus:
-    ACCEPTED = 'accepted'
-    DECLINED = 'declined'
-    WAITING = 'waiting'
+# class NotificationStatus:
+#     ACCEPTED = 'accepted'
+#     DECLINED = 'declined'
+#     WAITING = 'waiting'
 
-    CHOICES = [
-        (ACCEPTED, 'Принято'),
-        (DECLINED, 'Отклонено'),
-        (WAITING, 'Ожидание'),
-    ]
+#     CHOICES = [
+#         (ACCEPTED, 'Принято'),
+#         (DECLINED, 'Отклонено'),
+#         (WAITING, 'Ожидание'),
+#     ]
 
 
-class Notification(models.Model):
-    user = models.ForeignKey(CustomUser, on_delete=models.CASCADE)
-    character = models.ForeignKey(Legacy, on_delete=models.CASCADE)
-    status = models.CharField(
-        max_length=20,
-        choices=NotificationStatus.CHOICES,
-        default=NotificationStatus.WAITING
-    )
-    created_at = models.DateTimeField(auto_now_add=True)
-    updated_at = models.DateTimeField(auto_now=True)
+# class Notification(models.Model):
+#     user = models.ForeignKey(CustomUser, on_delete=models.CASCADE)
+#     character = models.ForeignKey(Legacy, on_delete=models.CASCADE)
+#     status = models.CharField(
+#         max_length=20,
+#         choices=NotificationStatus.CHOICES,
+#         default=NotificationStatus.WAITING
+#     )
+#     created_at = models.DateTimeField(auto_now_add=True)
+#     updated_at = models.DateTimeField(auto_now=True)
 
-    objects: Manager = models.Manager()
+#     objects: Manager = models.Manager()
 
 
 class RaidType(models.Model):

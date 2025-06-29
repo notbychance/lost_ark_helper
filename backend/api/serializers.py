@@ -5,6 +5,7 @@ from django.core.exceptions import ValidationError
 import os
 
 from .models import *
+from .addons.functions import *
 
 
 class UserRegisterSerializer(serializers.ModelSerializer):
@@ -109,3 +110,14 @@ class GroupSerializer(serializers.ModelSerializer):
     class Meta:
         model = Group
         fields = '__all__'
+        extra_kwargs = {
+            'owner': {'write_only': True},
+            'name': {'read_only': True},
+            'invitation': {'read_only': True},
+        }
+
+    def create(self, validated_data):
+        name = generate_unique_name()
+        validated_data['name'] = name
+        validated_data['invitation'] = generate_invite_code(name)
+        return super().create(validated_data)

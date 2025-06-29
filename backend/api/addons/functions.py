@@ -2,6 +2,10 @@ import hashlib
 from datetime import datetime
 import secrets
 import base64
+import uuid
+
+from django.core.exceptions import ValidationError
+from ..models import Group
 
 def generate_invite_code(group_name: str) -> str:
     # 1. Хеш группы (SHA-256 в Base64)
@@ -32,3 +36,10 @@ def generate_invite_code(group_name: str) -> str:
         f"{random_part}#"
         f"{checksum}"
     )
+    
+def generate_unique_name():
+    for _ in range(3):  # 3 попытки
+        name = f'group-{uuid.uuid4().hex[:8]}'
+        if not Group.objects.filter(name=name).exists():
+            return name
+    raise ValidationError("Cannot generate unique group name")

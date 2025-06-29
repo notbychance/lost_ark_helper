@@ -1,16 +1,17 @@
-version: '3.8'
-
 services:
   db:
     image: postgres:13
-    environment:
-      POSTGRES_DB: mydb
-      POSTGRES_USER: myuser
-      POSTGRES_PASSWORD: mypassword
+    env_file:
+      - .env
     volumes:
       - postgres_data:/var/lib/postgresql/data/
     ports:
       - "5432:5432"
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U ${POSTGRES_USER}" ]
+      interval: 5s
+      timeout: 5s
+      retries: 5
 
   redis:
     image: redis:6
@@ -21,31 +22,35 @@ services:
     build:
       context: ./backend
       dockerfile: Dockerfile
+    env_file:
+      - .env
+      - ./backend/.env.django # Дополнительные Django-переменные
     command: bash -c "python manage.py migrate && python manage.py runserver 0.0.0.0:8000"
     volumes:
       - ./backend:/app
     ports:
       - "8000:8000"
-    environment:
-      - DATABASE_URL=postgres://myuser:mypassword@db:5432/mydb
-      - CELERY_BROKER_URL=redis://redis:6379/0
     depends_on:
-      - db
-      - redis
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_started
 
   celery:
     build:
       context: ./backend
       dockerfile: Dockerfile
-    command: celery -A myproject worker -l info
+    command: celery -A backend worker -l info
     volumes:
       - ./backend:/app
     environment:
-      - DATABASE_URL=postgres://myuser:mypassword@db:5432/mydb
+      - DATABASE_URL=postgres://postgres:1234@db:5432/lostarkhelper
       - CELERY_BROKER_URL=redis://redis:6379/0
     depends_on:
-      - db
-      - redis
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_started
 
   frontend:
     build:
@@ -55,6 +60,9 @@ services:
       - "8080:8080"
     volumes:
       - ./frontend:/app
+      - /app/node_modules # Изолируем node_modules
+    environment:
+      - NODE_ENV=development
     stdin_open: true
     tty: true
     depends_on:
@@ -62,3 +70,4 @@ services:
 
 volumes:
   postgres_data:
+  backend_static:

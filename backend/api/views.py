@@ -34,7 +34,7 @@ class AuthViewSet(viewsets.GenericViewSet):
         return TokenRefreshView.as_view()(request._request)
 
     @action(detail=False, methods=['post'], url_path='register')
-    def register(self, request, *args, **kwargs):        
+    def register(self, request, *args, **kwargs):
         serializer = UserRegisterSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         user = serializer.save()
@@ -123,6 +123,10 @@ class AuthViewSet(viewsets.GenericViewSet):
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )
 
+    def link(self, request):
+        user = request.user
+        user.
+
     def list(self, request, *args, **kwargs):
         if not request.user.is_staff and not request.user.is_superuser:
             return Response(status=status.HTTP_404_NOT_FOUND)
@@ -132,32 +136,64 @@ class AuthViewSet(viewsets.GenericViewSet):
 
 
 class GroupViewSet(viewsets.GenericViewSet):
-    @action(detail=True, methods=['get'], url_path='group-list')
+    """Отображения для групповых операций"""
+
+    def get_serializer_class(self):
+        match self.action:
+            case _:
+                return GroupSerializer
+
+    def get_queryset(self):
+        match self.action:
+            case _:
+                return Group.objects.all()
+
+    def get_permissions(self):
+        match self.action:
+            case 'character-list':
+                return [IsAuthenticated(), IsParticipant()]
+            case 'invite':
+                return [IsAuthenticated(), IsOwner()]
+            case _:
+                return super().get_permissions()
+
+    @action(detail=True, methods=['get'], url_path='character-list')
     def group_list(self, request, pk=None):
-        group = get_object_or_404(
-            Group.objects.filter(owner=request.user),
-            pk=pk
-        )
+        """Получение списка учасников группы"""
+        group = self.get_object()
         characters = GroupCharacters.objects.filter(group=group)
         serializer = GroupCharacterSerializer(characters, many=True)
         return Response(serializer.data, status=status.HTTP_200_OK)
 
     @action(detail=True, methods=['get'], url_path='invite')
     def invite(self, request, pk=None):
-        invitation = get_object_or_404(
-            Group.objects.filter(owner=request.user),
-            pk=pk
-        ).invitation
+        """Отправка приглашения пользователю"""
+        invitation = self.get_object()
+        # Переделать, email как параметр get - глупость
         email = request.data.get('email')
         if not email:
             return Response(
                 {'error': 'Email обязателен'},
                 status=status.HTTP_400_BAD_REQUEST
             )
-        send_invitation_email.delay(email, invitation)
+        # send_invitation_email.delay(email, invitation)
         return Response(status=status.HTTP_200_OK)
 
     def list(self, request):
-        groups = Group.objects.filter(owner=request.user)
-        serializer = GroupSerializer(groups, many=True)
+        """Получения списка групп пользователя"""
+        groups = self.get_queryset().filter(owner=request.user)
+        serializer = self.get_serializer(groups, many=True)
         return Response(serializer.data)
+
+    def create(self, request):
+        '''Создание группы и привязка к текущему пользователю'''
+        self.get_serializer().save()
+
+    def destroy(self, request, *args, **kwargs):
+        instance = self.get_object()  # Получаем объект
+
+        if instance.owner != request.user:
+            return Response(status=status.HTTP_403_FORBIDDEN)
+
+        instance.delete()
+        return Response(status=status.HTTP_204_NO_CONTENT)

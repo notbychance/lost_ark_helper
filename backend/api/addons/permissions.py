@@ -1,18 +1,12 @@
 from rest_framework import permissions
-from ..models import Privilege
+from ..models import GroupParticipants
 
 
 class IsOwner(permissions.BasePermission):
-    def has_permission(self, request, view):
-        return (
-            request.user.is_authenticated and
-            request.user.privilege.name == Privilege.OWNER
-        )
+    def has_object_permission(self, request, view, obj):
+        return obj.owner == request.user
 
 
-class IsEditor(permissions.BasePermission):
-    def has_permission(self, request, view):
-        return (
-            request.user.is_authenticated and
-            request.user.privilege.name == Privilege.EDITOR
-        )
+class IsParticipant(permissions.BasePermission):
+    def has_object_permission(self, request, view, obj):
+        return GroupParticipants.objects.filter(group=obj, user=request.user).exists()
